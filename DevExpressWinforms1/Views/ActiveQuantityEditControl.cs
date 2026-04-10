@@ -1,9 +1,11 @@
 using DevExpressWinforms1.Models;
+using DevExpress.Utils.Drawing;
 using DevExpress.XtraEditors;
+using DevExpress.XtraEditors.CustomEditor;
 
 namespace DevExpressWinforms1.Views;
 
-public class ActiveQuantityEditControl : XtraUserControl
+public class ActiveQuantityEditControl : XtraUserControl, IAnyControlEdit
 {
     private readonly CheckEdit _checkEdit;
     private readonly SpinEdit _spinEdit;
@@ -45,6 +47,43 @@ public class ActiveQuantityEditControl : XtraUserControl
         _spinEdit.Value = (decimal)item.Quantity;
         _spinEdit.Enabled = item.IsActive;
     }
+
+    // IAnyControlEdit implementation
+    object IAnyControlEdit.EditValue
+    {
+        get => (object?)_item ?? DBNull.Value;
+        set
+        {
+            if (value is ItemModel model)
+                Bind(model);
+        }
+    }
+
+    bool IAnyControlEdit.SupportsDraw => false;
+
+    bool IAnyControlEdit.AllowBorder => false;
+
+    bool IAnyControlEdit.AllowBitmapCache => false;
+
+    event EventHandler IAnyControlEdit.EditValueChanged
+    {
+        add { }
+        remove { }
+    }
+
+    Size IAnyControlEdit.CalcSize(Graphics g) => Size;
+
+    void IAnyControlEdit.Draw(GraphicsCache cache, AnyControlEditViewInfo viewInfo) { }
+
+    void IAnyControlEdit.SetupAsDrawControl() { }
+
+    void IAnyControlEdit.SetupAsEditControl() { }
+
+    string IAnyControlEdit.GetDisplayText(object editValue) => string.Empty;
+
+    bool IAnyControlEdit.IsNeededKey(KeyEventArgs e) => false;
+
+    bool IAnyControlEdit.AllowClick(Point point) => true;
 
     private void OnCheckedChanged(object? sender, EventArgs e)
     {

@@ -1,11 +1,13 @@
+using DevExpress.Utils.Drawing;
 using DevExpress.Utils.MVVM;
 using DevExpressWinforms1.Models;
 using DevExpressWinforms1.ViewModels;
 using DevExpress.XtraEditors;
 using DevExpress.XtraEditors.Controls;
-using DevExpress.XtraEditors.Drawing;
 using DevExpress.XtraEditors.CustomEditor;
+using DevExpress.XtraEditors.Drawing;
 using DevExpress.XtraEditors.Repository;
+using DevExpress.XtraEditors.ViewInfo;
 using DevExpress.XtraGrid;
 using DevExpress.XtraGrid.Columns;
 using DevExpress.XtraGrid.Views.Base;
@@ -22,7 +24,9 @@ public class MainForm : XtraForm
     private readonly GridColumn _nameColumn;
     private readonly GridColumn _activeQuantityColumn;
     private readonly RepositoryItemAnyControl _activeQuantityRepository;
+    private readonly ActiveQuantityEditControl _activeQuantityEditor;
     private readonly MainViewModel _viewModel;
+    private Rectangle _columnHeaderBounds = Rectangle.Empty;
 
     public MainForm()
     {
@@ -54,17 +58,11 @@ public class MainForm : XtraForm
         _activeQuantityColumn.Visible = true;
         _activeQuantityColumn.VisibleIndex = 1;
 
+        _activeQuantityEditor = new ActiveQuantityEditControl();
         _activeQuantityRepository = new RepositoryItemAnyControl
         {
-            Name = "repoActiveQuantity"
-        };
-        _activeQuantityRepository.CreateControl += (_, e) => e.Control = new ActiveQuantityEditControl();
-        _activeQuantityRepository.CustomizeControl += (_, e) =>
-        {
-            if (e.Control is ActiveQuantityEditControl editor && e.Row is ItemModel row)
-            {
-                editor.Bind(row);
-            }
+            Name = "repoActiveQuantity",
+            Control = _activeQuantityEditor
         };
 
         _activeQuantityColumn.ColumnEdit = _activeQuantityRepository;
@@ -79,6 +77,7 @@ public class MainForm : XtraForm
         _view.CustomDrawColumnHeader += OnCustomDrawColumnHeader;
         _view.MouseDown += OnGridMouseDown;
         _view.CellValueChanged += OnCellValueChanged;
+        _view.ShownEditor += OnShownEditor;
 
         Load += OnLoad;
     }
@@ -117,6 +116,7 @@ public class MainForm : XtraForm
             return;
         }
 
+        _columnHeaderBounds = e.Bounds;
         e.Painter.DrawObject(e.Info);
         DrawHeaderCheck(e);
         e.Handled = true;
@@ -125,14 +125,13 @@ public class MainForm : XtraForm
     private void DrawHeaderCheck(ColumnHeaderCustomDrawEventArgs e)
     {
         var state = _viewModel.GetHeaderState();
-        var editorInfo = new CheckEditViewInfo(new RepositoryItemCheckEdit { AllowGrayed = true })
+        var repoItem = new RepositoryItemCheckEdit { AllowGrayed = true };
+        var editorInfo = new CheckEditViewInfo(repoItem);
+        editorInfo.EditValue = state switch
         {
-            CheckState = state switch
-            {
-                true => CheckState.Checked,
-                false => CheckState.Unchecked,
-                _ => CheckState.Indeterminate
-            }
+            true => (object)true,
+            false => (object)false,
+            _ => null
         };
 
         var glyphSize = 18;
@@ -146,7 +145,7 @@ public class MainForm : XtraForm
         editorInfo.CalcViewInfo(e.Cache.Graphics);
 
         var painter = new CheckEditPainter();
-        using var args = new ControlGraphicsInfoArgs(editorInfo, new GraphicsCache(e.Cache.Graphics), rect);
+        var args = new ControlGraphicsInfoArgs(editorInfo, e.Cache, rect);
         painter.Draw(args);
     }
 
@@ -158,7 +157,7 @@ public class MainForm : XtraForm
             return;
         }
 
-        var headerRect = hit.ColumnInfo?.Bounds ?? Rectangle.Empty;
+        var headerRect = _columnHeaderBounds;
         var checkRect = new Rectangle(headerRect.Right - 26, headerRect.Top + (headerRect.Height - 18) / 2, 18, 18);
         if (!checkRect.Contains(e.Location))
         {
@@ -170,6 +169,15 @@ public class MainForm : XtraForm
         _viewModel.SetAllRowsActive(newValue);
         _view.RefreshData();
         UpdateHeaderGlyph();
+    }
+
+    private void OnShownEditor(object? sender, EventArgs e)
+    {
+        if (_view.FocusedColumn == _activeQuantityColumn &&
+            _view.GetRow(_view.FocusedRowHandle) is ItemModel row)
+        {
+            _activeQuantityEditor.Bind(row);
+        }
     }
 
     private void UpdateHeaderGlyph()
