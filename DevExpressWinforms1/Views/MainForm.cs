@@ -4,6 +4,7 @@ using DevExpressWinforms1.ViewModels;
 using DevExpress.XtraEditors;
 using DevExpress.XtraEditors.Controls;
 using DevExpress.XtraEditors.Drawing;
+using DevExpress.XtraEditors.CustomEditor;
 using DevExpress.XtraEditors.Repository;
 using DevExpress.XtraGrid;
 using DevExpress.XtraGrid.Columns;
